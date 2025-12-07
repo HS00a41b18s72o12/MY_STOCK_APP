@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}エラー{% endblock %}
+{% block content %}
+<div class="text-center mt-16">
+    <h1 class="text-3xl font-bold mb-4">エラー</h1>
+    <p class="text-lg text-red-600 mb-8">{{ message }}</p>
+    <a href="{{ url_for('index') }}" class="text-blue-500 underline">トップページへ戻る</a>
+</div>
+{% endblock %}

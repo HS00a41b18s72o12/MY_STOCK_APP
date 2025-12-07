@@ -1,0 +1,19 @@
+# exclude Python bytecode 
+__pycache__/
+*.pyc
+
+# exclude still.jpeg
+data/still.jpeg
+
+# others
+*.pyo
+*.pyd
+*.env
+*.venv
+.env/
+.venv/
+test.py
+
+# generai exclude files
+.DS_Store
+Thumbs.db

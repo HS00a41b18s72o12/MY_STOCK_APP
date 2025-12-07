@@ -1,0 +1,5 @@
+yfinance==0.2.66
+schedule==1.2.1
+sqlalchemy==2.0.44
+psycopg2-binary==2.9.11
+jpholiday==1.0.1

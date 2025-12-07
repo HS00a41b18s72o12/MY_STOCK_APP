@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}ポートフォリオ一覧{% endblock %}
+{% block content %}
+<!-- ソート可能なヘッダーリンクを生成するマクロ -->
+{% macro sort_link(label, column) %}
+{% set next_order = 'desc' if current_sort == column and current_order == 'asc' else 'asc' %}
+<!-- href に group_filter=current_group を追加 -->
+<a href="{{ url_for('index', sort=column, order=next_order, group_filter=current_group) }}"
+    class="group inline-flex items-center space-x-1 cursor-pointer hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded">
+    <span>{{ label }}</span>
+    <span class="text-gray-400 text-[10px] flex flex-col leading-[0.5] group-hover:text-gray-600">
+        <span class="{{ 'text-blue-600' if current_sort == column and current_order == 'asc' else '' }}">▲</span>
+        <span class="{{ 'text-blue-600' if current_sort == column and current_order == 'desc' else '' }}">▼</span>
+    </span>
+</a>
+{% endmacro %}
+
+<!-- 銘柄登録フォーム -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <h2 class="text-xl font-bold mb-4 text-gray-700">銘柄の登録・更新</h2>
+    <form method="POST" action="/" class="flex flex-wrap items-end gap-4">
+        <div class="w-24">
+            <label class="block text-sm font-medium text-gray-700">銘柄コード</label>
+            <input type="text" name="stock_code" required
+                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 7203">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">銘柄名</label>
+            <input type="text" name="stock_name" class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                placeholder="例: トヨタ">
+        </div>
+        <div class="w-24">
+            <label class="block text-sm font-medium text-gray-700">保有株数</label>
+            <input type="number" name="number" class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                placeholder="例: 100">
+        </div>
+        <div class="w-32">
+            <label class="block text-sm font-medium text-gray-700">取得単価</label>
+            <input type="number" name="average_price" step="0.01"
+                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">メモ</label>
+            <input type="text" name="remarks" step="0.01" class="mt-1 block border border-gray-300 rounded-md p-2"
+                placeholder="例: 権利確定日は3月">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">分類</label>
+            <select name="group" class="mt-1 block border border-gray-300 rounded-md p-2 w-full">
+                <option value="" selected>未選択</option>
+                <option value="大型株">大型株</option>
+                <option value="成長株">成長株</option>
+                <option value="高配当株">高配当株</option>
+                <option value="優待株">優待株</option>
+            </select>
+        </div>
+        <div class="w-24">
+            <button type=" submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-150">
+                保存
+            </button>
+        </div>
+    </form>
+</div>
+
+
+<!-- ポートフォリオサマリー -->
+<h2 class="text-xl font-bold mb-4">ポートフォリオ・サマリー <span class="text-sm font-normal text-gray-500">({{ current_group if
+        current_group else 'すべて' }})</span></h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <!-- 1. 時価総額 -->
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <p class="text-sm text-gray-500 mb-1">時価総額合計</p>
+        <p class="text-2xl font-bold text-gray-900">{{ "{:,}".format(summary.market_value) }} <span
+                class="text-sm font-normal">円</span></p>
+    </div>
+    <!-- 2. 前日比合計 -->
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <p class="text-sm text-gray-500 mb-1">前日比合計</p>
+        <div class="flex items-baseline gap-2">
+            {% if summary.day_change_yen >= 0 %}
+            <p class="text-2xl font-bold text-green-600">+{{ "{:,}".format(summary.day_change_yen) }} 円</p>
+            <p class="text-sm font-semibold text-green-600">(+{{ summary.day_change_percent }}%)</p>
+            {% else %}
+            <p class="text-2xl font-bold text-red-600">{{ "{:,}".format(summary.day_change_yen) }} 円</p>
+            <p class="text-sm font-semibold text-red-600">({{ summary.day_change_percent }}%)</p>
+            {% endif %}
+        </div>
+    </div>
+    <!-- 3. 評価損益合計 -->
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <p class="text-sm text-gray-500 mb-1">評価損益合計</p>
+        <div class="flex items-baseline gap-2">
+            {% if summary.profit_yen >= 0 %}
+            <p class="text-2xl font-bold text-green-600">+{{ "{:,}".format(summary.profit_yen) }} 円</p>
+            <p class="text-sm font-semibold text-green-600">(+{{ summary.profit_percent }}%)</p>
+            {% else %}
+            <p class="text-2xl font-bold text-red-600">{{ "{:,}".format(summary.profit_yen) }} 円</p>
+            <p class="text-sm font-semibold text-red-600">({{ summary.profit_percent }}%)</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+    <h1 class="text-xl font-bold">保有銘柄一覧</h1>
+
+    <!-- フィルタリングボタン群 -->
+    <div class="inline-flex rounded-md shadow-sm" role="group">
+        <!-- 「すべて」ボタン -->
+        <a href="{{ url_for('index', sort=current_sort, order=current_order) }}" class="px-4 py-2 text-sm font-medium border border-gray-200 rounded-l-lg 
+                  {{ 'bg-blue-600 text-white' if not current_group else 'bg-white text-gray-700 hover:bg-gray-100' }}">
+            すべて
+        </a>
+
+        <!-- 各グループボタン -->
+        {% for g in ['大型株', '成長株', '高配当株', '優待株'] %}
+        <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter=g) }}"
+            class="px-4 py-2 text-sm font-medium border-t border-b border-r border-gray-200 
+                  {{ 'bg-blue-600 text-white' if current_group == g else 'bg-white text-gray-700 hover:bg-gray-100' }}">
+            {{ g }}
+        </a>
+        {% endfor %}
+
+        <!-- 「未分類」ボタン -->
+        <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter='未分類') }}"
+            class="px-4 py-2 text-sm font-medium border-t border-b border-r border-gray-200 rounded-r-lg
+                  {{ 'bg-blue-600 text-white' if current_group == '未分類' else 'bg-white text-gray-700 hover:bg-gray-100' }}">
+            未分類
+        </a>
+    </div>
+</div>
+
+<div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {{ sort_link('銘柄', 'stock_code') }}
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {{ sort_link('現在値 / 前日比', 'price_diff_percent') }}
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {{ sort_link('損益', 'profit_percent') }}
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {{ sort_link('保有 / 取得単価', 'number') }}
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        指標 (PER/PBR/配当)
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
+                        AI分析 (直近開示)
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        メモ
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        分類
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        操作
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for c in stock_contents %}
+                <tr class="hover:bg-gray-50 transition duration-150">
+
+                    <!-- 1. 銘柄情報 -->
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <div class="text-lg font-bold text-gray-900">{{ c.stock_name }}</div>
+                        <div class="text-xs text-gray-500">{{ c.stock_code }}</div>
+                    </td>
+
+                    <!-- 2. 現在値・前日比 -->
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        <div class="text-base font-bold text-gray-900">{{ c.current_price }} 円</div>
+                        <!-- プラスなら緑、マイナスなら赤 -->
+                        {% if c.price_diff|float >= 0 %}
+                        <div class="text-xs font-semibold text-green-600">
+                            +{{ c.price_diff }} (+{{ c.price_diff_percent }}%)
+                        </div>
+                        {% else %}
+                        <div class="text-xs font-semibold text-red-600">
+                            {{ c.price_diff }} ({{ c.price_diff_percent }}%)
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- 3. 損益 -->
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        {% if c.profit_yen|float >= 0 %}
+                        <div class="text-base font-bold text-green-600">+{{ c.profit_yen }} 円</div>
+                        <div class="text-xs text-green-600">+{{ c.profit_percent }}%</div>
+                        {% else %}
+                        <div class="text-base font-bold text-red-600">{{ c.profit_yen }} 円</div>
+                        <div class="text-xs text-red-600">{{ c.profit_percent }}%</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- 4. 保有状況 -->
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        <div class="text-base text-gray-900">{{ c.number }} 株</div>
+                        <div class="text-xs text-gray-500">@{{ c.average_price }} 円</div>
+                    </td>
+
+                    <!-- 5. 指標 -->
+                    <td class="px-4 py-4 whitespace-nowrap text-left">
+                        <div class="text-base text-gray-600">
+                            PER: <span class="font-medium text-gray-900">{{ c.per }}</span> /
+                            PBR: <span class="font-medium text-gray-900">{{ c.pbr }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            配当: {{ c.dividend_yield_percent }}% ({{ c.dividend_amount }}円)
+                        </div>
+                    </td>
+
+                    <!-- 6. AI分析結果 -->
+                    <td class="px-4 py-4 text-sm align-top">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs text-gray-400">{{ c.announce_date }}</span>
+                            <!-- 増収増益バッジ -->
+                            {% if c.sales_growth and c.sales_growth != '-' %}
+                            <span
+                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                売上 {{ c.sales_growth }}
+                            </span>
+                            {% endif %}
+                            {% if c.profit_growth and c.profit_growth != '-' %}
+                            <span
+                                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                利益 {{ c.profit_growth }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- PDFリンク付きタイトル -->
+                        {% if c.pdf_url %}
+                        <a href="{{ c.pdf_url }}" target="_blank"
+                            class="text-blue-600 hover:text-blue-800 hover:underline font-medium block truncate max-w-xs"
+                            title="{{ c.title }}">
+                            {{ c.title }} <i class="ml-1 text-xs">PDF</i>
+                        </a>
+                        {% else %}
+                        <span class="text-gray-400">-</span>
+                        {% endif %}
+
+                        <!-- AI要約 (アコーディオン) -->
+                        {% if c.summary and c.summary != '-' %}
+                        <details class="mt-2 text-xs group">
+                            <summary
+                                class="cursor-pointer text-gray-500 hover:text-gray-700 font-medium select-none list-none flex items-center gap-1">
+                                <span class="group-open:hidden">▶ 要約を見る</span>
+                                <span class="hidden group-open:inline">▼ 閉じる</span>
+                            </summary>
+                            <div
+                                class="mt-1 p-2 bg-gray-50 rounded border border-gray-100 text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                {{ c.summary }}
+                            </div>
+                        </details>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-left">
+                        <div class="text-sm text-gray-700">{{ c.remarks }}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-left">
+                        <div class="text-sm text-gray-700">{{ c.group }}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-right">
+                        <form action="/delete" method="POST"
+                            onsubmit="return confirm('本当に「{{ c.stock_name }}」を削除しますか？\n関連するデータもすべて削除されます。');">
+                            <input type="hidden" name="stock_code" value="{{ c.stock_code }}">
+                            <button type="submit" class="text-red-500 hover:text-red-700 font-bold text-sm">
+                                削除
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        登録されている銘柄はありません。上のフォームから登録してください。
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

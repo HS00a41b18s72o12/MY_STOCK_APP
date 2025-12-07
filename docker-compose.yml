@@ -1,0 +1,131 @@
+services:
+# 1. Frontend
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - my_stock_app_net
+    depends_on:
+      frontend:
+        condition: service_started
+
+  frontend:
+    expose:
+      - "5000"
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Tokyo
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./frontend:/app  # 開発用にコードをマウント
+      - ./common:/app/common # 共有コードもマウント
+    networks:
+      - my_stock_app_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+# 2. Database
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - my_stock_app_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# 3. search disclosure (適時開示検索 -> DB保存)
+  selenium_for_search_disclosure:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium_for_search_disclosure
+    ports:
+      - "4444:4444"
+    shm_size: 2gb
+    networks:
+      - my_stock_app_net
+
+  search_disclosure:
+    build:
+      context: .
+      dockerfile: ./search_disclosure/Dockerfile
+    container_name: search_disclosure
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Tokyo
+      - SELENIUM_URL=http://selenium_for_search_disclosure:4444/wd/hub
+      - SEARCH_DISCLOSURE_URL=https://www.buffett-code.com/disclosures/yyyy/mm/dd?page=
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - SEARCH_KEYWORD=${SEARCH_KEYWORD}
+    volumes:
+      - ./search_disclosure:/app
+      - ./common:/app/common
+    networks:
+      - my_stock_app_net
+    depends_on:
+      selenium_for_search_disclosure:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+# 4. analyze finance report (DB監視 -> Gemini分析 -> DB更新)
+  analyze_finance_report:
+    build:
+      context: .
+      dockerfile: ./analyze_finance_report/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Tokyo
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./analyze_finance_report:/app
+      - ./common:/app/common
+    networks:
+      - my_stock_app_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+# 5. update finance info (株価・PER等更新)
+  update_finance_info:
+    build:
+      context: .
+      dockerfile: ./update_finance_info/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Tokyo
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./update_finance_info:/app
+      - ./common:/app/common
+    networks:
+      - my_stock_app_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  my_stock_app_net:
+    driver: bridge
+
+volumes:
+  db_data:
