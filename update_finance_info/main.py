@@ -13,27 +13,41 @@ class FinanceUpdater:
 
     def get_stock_data_from_yfinance(self, code):
         """yfinanceからデータを取得するヘルパー関数"""
-        try:
-            # 日本株の場合は .T をつける必要がある
-            ticker_symbol = f"{code}.T"
-            ticker = yf.Ticker(ticker_symbol)
-            info = ticker.info
-            current_price = info.get('currentPrice')
-            previous_price = info.get('previousClose')
-            dividend_amount = info.get('dividendRate')
-            per = round(info.get('trailingPE'), 2)
-            pbr = round(info.get('priceToBook'), 2)
-            # 取得できない場合は None が返ることもあるので注意
-            return {
-                "current_price": current_price,
-                "previous_price": previous_price,
-                "dividend_amount": dividend_amount,
-                "per": per,
-                "pbr": pbr,
-            }
-        except Exception as e:
-            print(f"Error fetching {code}: {e}")
-            return None
+        stock_exchange_code = ['T', 'N', 'F', 'S']
+        for exchange_code in stock_exchange_code:
+            try:
+                # 日本株の場合は .T をつける必要がある
+                ticker_symbol = f"{code}.{exchange_code}"
+                ticker = yf.Ticker(ticker_symbol)
+                info = ticker.info
+                current_price = info.get('currentPrice')
+                previous_price = info.get('previousClose')
+                dividend_amount = info.get('dividendRate')
+                per = None if info.get('trailingPE') is None else round(info.get('trailingPE'), 2)
+                pbr = None if info.get('priceToBook') is None else round(info.get('priceToBook'), 2)
+                # データがない場合は次の取引所コードを試す    
+                if current_price is None and previous_price is None:
+                    print(f"No price data for {ticker_symbol}, trying next exchange.")
+                    continue  
+                # 取得できない場合は None が返ることもあるので注意
+                return {
+                    "current_price": current_price,
+                    "previous_price": previous_price,
+                    "dividend_amount": dividend_amount,
+                    "per": per,
+                    "pbr": pbr,
+                }
+            except Exception as e:
+                print(f"Error fetching {ticker_symbol}: {e}")
+                continue
+        # どの取引所にも存在しない場合、初期値を返す
+        return {
+            "current_price": 0,
+            "previous_price": 0,
+            "dividend_amount": 0,
+            "per": 0,
+            "pbr": 0,
+        }
 
     def check_new_stocks(self):
         """

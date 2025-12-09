@@ -3,7 +3,7 @@ services:
   nginx:
     image: nginx:latest
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     networks:
@@ -57,7 +57,7 @@ services:
     image: selenium/standalone-chrome:latest
     container_name: selenium_for_search_disclosure
     ports:
-      - "4444:4444"
+      - "4445:4444"
     shm_size: 2gb
     networks:
       - my_stock_app_net

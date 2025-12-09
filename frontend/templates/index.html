@@ -21,22 +21,22 @@
     <form method="POST" action="/" class="flex flex-wrap items-end gap-4">
         <div class="w-24">
             <label class="block text-sm font-medium text-gray-700">銘柄コード</label>
-            <input type="text" name="stock_code" required
+            <input type="text" name="stock_code" id="input_stock_code" required
                 class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 7203">
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700">銘柄名</label>
-            <input type="text" name="stock_name" class="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                placeholder="例: トヨタ">
+            <input type="text" name="stock_name" id="input_stock_name"
+                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: トヨタ">
         </div>
         <div class="w-24">
             <label class="block text-sm font-medium text-gray-700">保有株数</label>
-            <input type="number" name="number" class="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                placeholder="例: 100">
+            <input type="number" id=stock_number name="number" step=1 value="0"
+                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 100">
         </div>
         <div class="w-32">
             <label class="block text-sm font-medium text-gray-700">取得単価</label>
-            <input type="number" name="average_price" step="0.01"
+            <input type="number" id=stock_average_price name="average_price" step="0.01" value="0"
                 class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
         </div>
         <div>
@@ -48,9 +48,8 @@
             <label class="block text-sm font-medium text-gray-700">分類</label>
             <select name="group" class="mt-1 block border border-gray-300 rounded-md p-2 w-full">
                 <option value="" selected>未選択</option>
-                <option value="大型株">大型株</option>
-                <option value="成長株">成長株</option>
-                <option value="高配当株">高配当株</option>
+                <option value="長期保有">長期保有</option>
+                <option value="短期保有">短期保有</option>
                 <option value="優待株">優待株</option>
             </select>
         </div>
@@ -114,7 +113,7 @@
         </a>
 
         <!-- 各グループボタン -->
-        {% for g in ['大型株', '成長株', '高配当株', '優待株'] %}
+        {% for g in ['長期保有', '短期保有', '優待株'] %}
         <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter=g) }}"
             class="px-4 py-2 text-sm font-medium border-t border-b border-r border-gray-200 
                   {{ 'bg-blue-600 text-white' if current_group == g else 'bg-white text-gray-700 hover:bg-gray-100' }}">
@@ -186,7 +185,7 @@
 
                     <!-- 2. 現在値・前日比 -->
                     <td class="px-4 py-4 whitespace-nowrap text-right">
-                        <div class="text-base font-bold text-gray-900">{{ c.current_price }} 円</div>
+                        <div class="text-base font-bold text-gray-900">{{ "{:,}".format(c.current_price) }} 円</div>
                         <!-- プラスなら緑、マイナスなら赤 -->
                         {% if c.price_diff|float >= 0 %}
                         <div class="text-xs font-semibold text-green-600">
@@ -202,10 +201,10 @@
                     <!-- 3. 損益 -->
                     <td class="px-4 py-4 whitespace-nowrap text-right">
                         {% if c.profit_yen|float >= 0 %}
-                        <div class="text-base font-bold text-green-600">+{{ c.profit_yen }} 円</div>
+                        <div class="text-base font-bold text-green-600">+{{ "{:,}".format(c.profit_yen) }} 円</div>
                         <div class="text-xs text-green-600">+{{ c.profit_percent }}%</div>
                         {% else %}
-                        <div class="text-base font-bold text-red-600">{{ c.profit_yen }} 円</div>
+                        <div class="text-base font-bold text-red-600">{{ "{:,}".format(c.profit_yen) }} 円</div>
                         <div class="text-xs text-red-600">{{ c.profit_percent }}%</div>
                         {% endif %}
                     </td>
@@ -299,4 +298,61 @@
         </table>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const codeInput = document.getElementById("input_stock_code");
+        const nameInput = document.getElementById("input_stock_name");
+
+        // 銘柄コード入力欄からフォーカスが外れた時(blur)に実行
+        codeInput.addEventListener("blur", async () => {
+            const code = codeInput.value.trim();
+
+            // コードが4桁(以上)で、かつ銘柄名が空欄の時だけ実行
+            if (code.length >= 4 && nameInput.value === "") {
+                try {
+                    // ユーザーに処理中であることを伝える
+                    nameInput.placeholder = "取得中...";
+                    nameInput.value = ""; // 入力をクリア
+
+                    // APIを呼び出す
+                    const response = await fetch(`/api/get_stock_name/${code}`);
+                    const data = await response.json();
+
+                    if (data.status === "success") {
+                        nameInput.value = data.name;
+                    } else {
+                        nameInput.placeholder = "見つかりませんでした";
+                    }
+                } catch (error) {
+                    console.error("Error fetching stock name:", error);
+                    nameInput.placeholder = "エラー発生";
+                }
+            }
+        });
+    });
+</script>
+
+<script>
+    const input_stock_number = document.getElementById('stock_number');
+    const input_stock_average_price = document.getElementById('stock_average_price');
+    input_stock_number.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowUp') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_stock_number.value = parseFloat(input_stock_number.value) + 100;  // 100増加
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_stock_number.value = parseFloat(input_stock_number.value) - 100;  // 100減少
+        }
+    });
+    input_stock_average_price.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowUp') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_stock_average_price.value = parseFloat(input_stock_average_price.value) + 1000;  // 1000増加
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_stock_average_price.value = parseFloat(input_stock_average_price.value) - 1000;  // 1000減少
+        }
+    });
+</script>
 {% endblock %}

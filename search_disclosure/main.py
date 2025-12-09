@@ -78,6 +78,14 @@ class DisclosureClass:
         """
         db = SessionLocal()
         try:
+            # # === ★追加: 特定のMarketDataを削除する処理 ===
+            # target_code = "2928"
+            # bad_data = db.query(MarketData).filter(MarketData.stock_code == target_code).first()
+            # if bad_data:
+            #     print(f"Deleting incorrect MarketData for {target_code}...")
+            #     db.delete(bad_data)
+            #     db.commit()
+            #     print("Deletion completed.")
             # すでにデータがあれば何もしない
             if db.query(Stock).count() > 0:
                 return
