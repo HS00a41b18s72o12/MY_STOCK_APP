@@ -86,6 +86,16 @@ class FinanceAnalyzer:
             if not record:
                 return
 
+            # PDFが取得できない場合の処理
+            if not record.pdf_url:
+                print(f"Skipping analysis (No PDF URL): {record.title}")
+                # DONEにしておけば、画面には表示される（要約はないがリンクはある状態）
+                # または "NO_PDF" というステータスを新設しても良い
+                record.status = "NO_PDF" 
+                record.summary = "PDFを取得できませんでした。"
+                db.commit()
+                return
+            
             # A. PDFダウンロード & テキスト抽出
             pdf_text = self._extract_text_from_pdf(record.pdf_url)
             if not pdf_text:
