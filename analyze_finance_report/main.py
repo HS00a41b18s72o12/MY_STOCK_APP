@@ -2,12 +2,14 @@ import os
 import io
 import json
 import time
+import csv
+import datetime
 import requests
 import google.generativeai as genai
 from pypdf import PdfReader
 from sqlalchemy.orm import Session
 from common.database import SessionLocal
-from common.models import Disclosure
+from common.models import Stock, Disclosure, MarketData
 
 class FinanceAnalyzer:
     def __init__(self):
@@ -51,6 +53,9 @@ class FinanceAnalyzer:
                     print("Batch finished. Sleeping until next schedule.")
                     break
                 time.sleep(10) # 10秒待機
+
+        print("start data backup")
+        self._data_backup()
 
     def _get_pending_record(self):
         db: Session = SessionLocal()
@@ -218,3 +223,60 @@ class FinanceAnalyzer:
         テキスト:
         {text}
         """
+    
+    def _data_backup(self):
+        """
+        Stock, MarketData, Disclosure テーブルの内容をCSVとしてバックアップする
+        保存先: analyze_finance_report/backups/
+        """
+        db: Session = SessionLocal()
+        try:
+            # 1. 保存先ディレクトリの作成 (なければ作る)
+            # コンテナ内の /app/backups に保存されます
+            # ホスト側では my-stock-app/analyze_finance_report/backups になります
+            backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+            os.makedirs(backup_dir, exist_ok=True)
+
+            # 2. ファイル名用のタイムスタンプ (例: 20251215_193000)
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+            # 3. バックアップ対象の定義 (モデルクラス, ファイル名のプレフィックス)
+            targets = [
+                (Stock, "stocks"),
+                (MarketData, "market_data"),
+                (Disclosure, "disclosures")
+            ]
+
+            print(f"Starting database backup to {backup_dir} ...")
+
+            for model_class, prefix in targets:
+                # 全データを取得
+                records = db.query(model_class).all()
+                
+                # ファイルパス作成
+                filename = f"{prefix}_{timestamp}.csv"
+                filepath = os.path.join(backup_dir, filename)
+
+                # カラム名（ヘッダー）を動的に取得
+                # SQLAlchemyのモデル定義からカラム名のリストを取り出します
+                columns = model_class.__table__.columns.keys()
+
+                with open(filepath, mode='w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    
+                    # ヘッダー書き込み
+                    writer.writerow(columns)
+                    
+                    # データ書き込み
+                    for record in records:
+                        # 各カラムの値を取り出してリストにする
+                        row = [getattr(record, col) for col in columns]
+                        writer.writerow(row)
+                
+                print(f"Saved: {filename} ({len(records)} records)")
+
+            print("Data backup completed successfully.")
+        except Exception as e:
+            print(f"Error during data backup: {e}")
+        finally:
+            db.close()

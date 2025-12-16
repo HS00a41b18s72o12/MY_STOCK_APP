@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 
 # exclude still.jpeg
-data/still.jpeg
+dummy_data/*
+!dummy_data/.gitkeep
 
 # others
 *.pyo

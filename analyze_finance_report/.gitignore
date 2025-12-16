@@ -1,0 +1,7 @@
+# exclude Python bytecode 
+__pycache__/
+*.pyc
+
+# exclude backup data
+backups/*
+!backups/.gitkeep
