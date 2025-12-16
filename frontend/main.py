@@ -169,11 +169,11 @@ class FrontendClass:
                 # 値が入っている場合のみ更新（空なら維持）
                 if stock_name is not None:
                     existing_stock.stock_name = stock_name
-                if number is not None:
+                if number is not None and number != 0:
                     existing_stock.number = number
-                if average_price is not None:
+                if average_price is not None and average_price != 0.0:
                     existing_stock.average_price = average_price
-                if remarks is not None:
+                if remarks is not None or remarks != '未選択':
                     existing_stock.remarks = remarks
                 if group is not None:
                     existing_stock.group = group

@@ -72,7 +72,7 @@ def get_disclosure_pdf_info(driver, my_stock_disclosure_info_json):
             # "disclosure-info" クラス内の "download" 属性を持つ aタグ が現れるのを最大10秒待つ
             # CSSセレクタの意味: <ul class="disclosure-info"> の中にある <a download="..."> 要素
             pdf_link_elem = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "ul.disclosure-info a[download]"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "a[download]"))
             )
             # href属性（PDFのURL）を取得
             pdf_url = pdf_link_elem.get_attribute("href")

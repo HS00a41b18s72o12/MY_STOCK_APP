@@ -12,6 +12,12 @@ Disclosure = DisclosureClass()
 # Disclosure.main_process()
 
 # PROD : set run schedule
+schedule.every().monday.at("12:45").do(lambda:Disclosure.main_process())
+schedule.every().tuesday.at("12:45").do(lambda:Disclosure.main_process())
+schedule.every().wednesday.at("12:45").do(lambda:Disclosure.main_process())
+schedule.every().thursday.at("12:45").do(lambda:Disclosure.main_process())
+schedule.every().friday.at("12:45").do(lambda:Disclosure.main_process())
+
 schedule.every().monday.at("19:10").do(lambda:Disclosure.main_process())
 schedule.every().tuesday.at("19:10").do(lambda:Disclosure.main_process())
 schedule.every().wednesday.at("19:10").do(lambda:Disclosure.main_process())
