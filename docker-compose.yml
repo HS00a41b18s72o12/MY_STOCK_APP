@@ -1,5 +1,5 @@
 services:
-# 1. Frontend
+# 1-1. Frontend(Nginx)
   nginx:
     image: nginx:latest
     ports:
@@ -12,6 +12,7 @@ services:
       frontend:
         condition: service_started
 
+# 1-2. Frontend(Flask)
   frontend:
     expose:
       - "5000"
@@ -32,8 +33,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db_manage:
+        condition: service_started
 
-# 2. Database
+# 2. Database(PostgreSQL)
   db:
     image: postgres:15
     environment:
@@ -52,7 +55,7 @@ services:
       timeout: 5s
       retries: 5
 
-# 3. search disclosure (適時開示検索 -> DB保存)
+# 3-1. search disclosure (Selenium)
   selenium_for_search_disclosure:
     image: selenium/standalone-chrome:latest
     container_name: selenium_for_search_disclosure
@@ -62,6 +65,7 @@ services:
     networks:
       - my_stock_app_net
 
+# 3-2. search disclosure (適時開示検索 -> DB保存)
   search_disclosure:
     build:
       context: .
@@ -85,6 +89,8 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+      db_manage:
+        condition: service_started
 
 # 4. analyze finance report (DB監視 -> Gemini分析 -> DB更新)
   analyze_finance_report:
@@ -104,8 +110,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db_manage:
+        condition: service_started
 
-# 5. update finance info (株価・PER等更新)
+# 5. update finance info (株価・PER等取得 -> DB更新)
   update_finance_info:
     build:
       context: .
@@ -116,6 +124,26 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     volumes:
       - ./update_finance_info:/app
+      - ./common:/app/common
+    networks:
+      - my_stock_app_net
+    depends_on:
+      db:
+        condition: service_healthy
+      db_manage:
+        condition: service_started
+
+# 6. DBバックアップ (ダミーデータ登録、DBバックアップ)
+  db_manage:
+    build:
+      context: .
+      dockerfile: ./db_manage/Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Tokyo
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./db_manage:/app
       - ./common:/app/common
     networks:
       - my_stock_app_net

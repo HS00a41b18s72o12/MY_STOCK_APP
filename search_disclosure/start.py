@@ -3,7 +3,7 @@ import time
 from main import DisclosureClass
 
 # wait for selenium container ready
-print("Start search_disclosure/start.py")
+print("Search Disclosure Container Started.")
 
 # define class instance
 Disclosure = DisclosureClass()
