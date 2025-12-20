@@ -7,12 +7,15 @@ from common.database import Base
 class Stock(Base):
     __tablename__ = "stocks"
     # カラム定義
-    stock_code = Column(String(10), primary_key=True, index=True)                                # 銘柄コード
-    stock_name = Column(String(255))                                                             # 銘柄名
-    number = Column(Integer, default=0)                                                          # 保有株数
-    average_price = Column(Float, default=0.0)                                                   # 取得単価
-    remarks = Column(String(255))                                                                # メモ
-    group = Column(String(10))                                                                   # グループ
+    stock_code = Column(String(10), primary_key=True, index=True)                      # 銘柄コード
+    stock_name = Column(String(255))                                                   # 銘柄名
+    number = Column(Integer, default=0)                                                # 保有株数
+    average_price = Column(Float, default=0.0)                                         # 取得単価
+    target_sell_price = Column(Float, nullable=True)                                   # 目標売却価格
+    target_buy_price = Column(Float, nullable=True)                                    # 目標購入価格
+    last_notice_date = Column(DateTime, nullable=True)                                 # 最後通知送信日
+    remarks = Column(String(255))                                                      # メモ
+    group = Column(String(10))                                                         # グループ
     created_at = Column(DateTime(timezone=True), server_default=func.now())                      # 作成日時
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # 更新日時
     # リレーション定義 (1:1) StockとMarketDataは 1:1 の関係

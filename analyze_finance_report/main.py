@@ -8,6 +8,7 @@ from pypdf import PdfReader
 from sqlalchemy.orm import Session
 from common.database import SessionLocal
 from common.models import Disclosure
+from common.notification import send_gmail
 
 class FinanceAnalyzer:
     def __init__(self):
@@ -72,7 +73,7 @@ class FinanceAnalyzer:
             db.close()
 
     def _process_single_record(self, record_data):
-        """PDF取得 -> 分析 -> DB更新の一連の流れ"""
+        """PDF取得 -> 分析 -> DB更新 -> 通知の一連の流れ"""
         # DBセッションはここで新規作成（長時間トランザクション回避）
         db: Session = SessionLocal()
         try:
@@ -108,6 +109,23 @@ class FinanceAnalyzer:
                 record.sales_growth = analysis_result.get("sales_growth", "-")
                 record.profit_growth = analysis_result.get("profit_growth", "-")
                 record.status = "DONE"
+                
+                # 追加: メール通知
+                subject = f"適時開示分析: {record.stock.stock_name} ({record.title})"
+                body = f"""
+                銘柄: {record.stock.stock_name} ({record.stock_code})
+                日時: {record.announce_date}
+                タイトル: {record.title}
+                
+                【要約】
+                {record.summary}
+                
+                売上成長: {record.sales_growth}
+                利益成長: {record.profit_growth}
+                
+                PDF: {record.pdf_url}
+                """
+                send_gmail(subject, body)
             else:
                 record.status = "ERROR"
             

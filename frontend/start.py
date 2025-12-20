@@ -29,11 +29,13 @@ def index():
         stock_name = request.form.get("stock_name")
         number = request.form.get("number")
         average_price = request.form.get("average_price")
+        target_sell_price = request.form.get("target_sell_price")
+        target_buy_price = request.form.get("target_buy_price")
         remarks = request.form.get("remarks")
         group = request.form.get("group")
         # DBへの登録処理を実行 (main.pyに追加するメソッド)
         print("start frontend_app.register_stock")
-        frontend_app.register_stock(stock_code, stock_name, number, average_price, remarks, group)
+        frontend_app.register_stock(stock_code, stock_name, number, average_price, target_sell_price, target_buy_price, remarks, group)
         
         # 二重送信防止のためリダイレクトする
         return redirect(url_for('index'))
@@ -54,7 +56,6 @@ def index():
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    
     return response
 
 @app.route("/delete", methods=["POST"])
@@ -63,9 +64,6 @@ def delete_stock():
     if stock_code:
         frontend_app.delete_stock(stock_code)
     return redirect(url_for('index'))
-
-
-
 
 @app.route("/api/get_stock_name/<stock_code>", methods=["GET"])
 def get_stock_name(stock_code):
@@ -91,7 +89,6 @@ def get_stock_name(stock_code):
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

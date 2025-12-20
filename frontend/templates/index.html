@@ -16,51 +16,79 @@
 {% endmacro %}
 
 <!-- 銘柄登録フォーム -->
-<div class="bg-white p-6 rounded-lg shadow-md mb-8">
-    <h2 class="text-xl font-bold mb-4 text-gray-700">銘柄の登録・更新</h2>
-    <form method="POST" action="/" class="flex flex-wrap items-end gap-4">
-        <div class="w-24">
-            <label class="block text-sm font-medium text-gray-700">銘柄コード</label>
-            <input type="text" name="stock_code" id="input_stock_code" required
-                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 7203">
+<details class="sticky top-0 z-40 bg-gray-50 opacity-90 rounded-lg shadow-md mb-8 group border border-gray-200">
+    <summary
+        class="list-none p-6 cursor-pointer flex items-center justify-between outline-none select-none bg-white rounded-lg group-open:rounded-b-none">
+
+        <!-- タイトル -->
+        <h2 class="text-xl font-bold text-gray-700">銘柄の登録・更新</h2>
+
+        <!-- 開閉アイコン -->
+        <!-- group-open:rotate-180 で、開いた時に180度回転させます -->
+        <div class="text-gray-400 transition-transform duration-300 group-open:rotate-180">
+            <!-- 下矢印のSVGアイコン -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
         </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700">銘柄名</label>
-            <input type="text" name="stock_name" id="input_stock_name"
-                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: トヨタ">
-        </div>
-        <div class="w-24">
-            <label class="block text-sm font-medium text-gray-700">保有株数</label>
-            <input type="number" id=stock_number name="number" step=1 value="0"
-                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 100">
-        </div>
-        <div class="w-32">
-            <label class="block text-sm font-medium text-gray-700">取得単価</label>
-            <input type="number" id=stock_average_price name="average_price" step="0.01" value="0"
-                class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700">メモ</label>
-            <input type="text" name="remarks" step="0.01" class="mt-1 block border border-gray-300 rounded-md p-2"
-                placeholder="例: 権利確定日は3月">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700">分類</label>
-            <select name="group" class="mt-1 block border border-gray-300 rounded-md p-2 w-full">
-                <option value="" selected>未選択</option>
-                <option value="長期保有">長期保有</option>
-                <option value="短期保有">短期保有</option>
-                <option value="優待株">優待株</option>
-            </select>
-        </div>
-        <div class="w-24">
-            <button type=" submit"
-                class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-150">
-                保存
-            </button>
-        </div>
-    </form>
-</div>
+    </summary>
+    <!-- ここから下が折りたたまれる内容 -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <form method="POST" action="/" class="flex flex-wrap items-end gap-4">
+            <div class="w-24">
+                <label class="block text-sm font-medium text-gray-700">銘柄コード</label>
+                <input type="text" name="stock_code" id="input_stock_code" required
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 7203">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">銘柄名</label>
+                <input type="text" name="stock_name" id="input_stock_name"
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: トヨタ">
+            </div>
+            <div class="w-24">
+                <label class="block text-sm font-medium text-gray-700">保有株数</label>
+                <input type="number" id=stock_number name="number" step=1
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 100">
+            </div>
+            <div class="w-32">
+                <label class="block text-sm font-medium text-gray-700">取得単価</label>
+                <input type="number" id=stock_average_price name="average_price" step="0.01"
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
+            </div>
+            <div class="w-32">
+                <label class="block text-sm font-medium text-gray-700">目標売り価格</label>
+                <input type="number" id=stock_target_sell_price name="target_sell_price" step="0.01"
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
+            </div>
+            <div class="w-32">
+                <label class="block text-sm font-medium text-gray-700">目標買い価格</label>
+                <input type="number" id=stock_target_buy_price name="target_buy_price" step="0.01"
+                    class="mt-1 block w-full border border-gray-300 rounded-md p-2" placeholder="例: 2000">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">メモ</label>
+                <input type="text" name="remarks" step="0.01" class="mt-1 block border border-gray-300 rounded-md p-2"
+                    placeholder="例: 権利確定日は3月">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">分類</label>
+                <select name="group" class="mt-1 block border border-gray-300 rounded-md p-2 w-full">
+                    <option value="" selected>未選択</option>
+                    <option value="長期保有">長期保有</option>
+                    <option value="短期保有">短期保有</option>
+                    <option value="優待株">優待株</option>
+                </select>
+            </div>
+            <div class="w-24">
+                <button type=" submit"
+                    class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-150">
+                    保存
+                </button>
+            </div>
+        </form>
+    </div>
+</details>
 
 
 <!-- ポートフォリオサマリー -->
@@ -175,8 +203,13 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for c in stock_contents %}
-                <tr class="hover:bg-gray-50 transition duration-150">
-
+                <tr class="hover:bg-blue-50 transition duration-150 cursor-pointer row-clickable"
+                    data-code="{{ c.stock_code }}" data-name="{{ c.stock_name }}" data-number="{{ c.number }}"
+                    data-price="{{ c.average_price }}"
+                    data-sell="{{ c.target_sell_price if c.target_sell_price else '' }}"
+                    data-buy="{{ c.target_buy_price if c.target_buy_price else '' }}"
+                    data-remarks="{{ c.remarks if c.remarks != '-' else '' }}"
+                    data-group="{{ c.group if c.group != '-' else '' }}">
                     <!-- 1. 銘柄情報 -->
                     <td class="px-4 py-4 whitespace-nowrap">
                         <div class="text-lg font-bold text-gray-900">{{ c.stock_name }}</div>
@@ -273,15 +306,24 @@
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-left">
                         <div class="text-sm text-gray-700">{{ c.remarks }}</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            {% if c.target_sell_price == 0.0 and c.target_buy_price == 0.0 %}
+                            {% elif c.target_sell_price == None and c.target_buy_price == None %}
+                            {% else %}
+                            目標売値: {{ c.target_sell_price if c.target_sell_price else '-' }} 円 /
+                            目標買値: {{ c.target_buy_price if c.target_buy_price else '-' }} 円
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-left">
                         <div class="text-sm text-gray-700">{{ c.group }}</div>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-right">
-                        <form action="/delete" method="POST"
+                        <form action="/delete" method="POST" class="delete-form"
                             onsubmit="return confirm('本当に「{{ c.stock_name }}」を削除しますか？\n関連するデータもすべて削除されます。');">
                             <input type="hidden" name="stock_code" value="{{ c.stock_code }}">
-                            <button type="submit" class="text-red-500 hover:text-red-700 font-bold text-sm">
+                            <button type="submit"
+                                class="text-red-500 hover:text-red-700 font-bold text-sm bg-transparent border-none cursor-pointer p-2 z-10 relative">
                                 削除
                             </button>
                         </form>
@@ -329,6 +371,55 @@
                     nameInput.placeholder = "エラー発生";
                 }
             }
+
+        });
+
+
+
+        // === 追加機能: 行クリックでフォームに値をセット ===
+        const formDetails = document.querySelector('details');
+        const rows = document.querySelectorAll('.row-clickable');
+
+        // フォームの各Input要素を取得
+        const inputCode = document.getElementById("input_stock_code");
+        const inputName = document.getElementById("input_stock_name");
+        const inputNumber = document.querySelector('input[name="number"]');
+        const inputPrice = document.querySelector('input[name="average_price"]');
+        const inputSell = document.querySelector('input[name="target_sell_price"]');
+        const inputBuy = document.querySelector('input[name="target_buy_price"]');
+        const inputRemarks = document.querySelector('input[name="remarks"]');
+        const selectGroup = document.querySelector('select[name="group"]');
+
+        rows.forEach(row => {
+            row.addEventListener('click', (e) => {
+                // 削除ボタンやリンク、アコーディオンをクリックした場合は無視する
+                if (e.target.closest('form.delete-form') || e.target.closest('a') || e.target.closest('details')) {
+                    return;
+                }
+
+                // data属性から値を取得
+                const d = row.dataset;
+
+                // フォームに値をセット
+                inputCode.value = d.code;
+                inputName.value = d.name;
+                inputNumber.value = d.number;
+                inputPrice.value = d.price;
+                inputSell.value = d.sell; // 値がなければ空文字が入る
+                inputBuy.value = d.buy;
+                inputRemarks.value = d.remarks;
+                selectGroup.value = d.group || ""; // 分類を選択（なければ未選択）
+
+                // フォームが閉じていたら開く
+                if (!formDetails.open) {
+                    formDetails.open = true;
+                }
+
+                // 視覚的なフィードバック（フォームまでスクロール & コード欄にフォーカス）
+                // stickyヘッダーなのでスクロールは不要かもしれませんが、念のため
+                // inputCode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // inputCode.focus();
+            });
         });
     });
 </script>
@@ -336,22 +427,47 @@
 <script>
     const input_stock_number = document.getElementById('stock_number');
     const input_stock_average_price = document.getElementById('stock_average_price');
+    const input_target_sell_price = document.getElementById('stock_target_sell_price');
+    const input_target_buy_price = document.getElementById('stock_target_buy_price');
+
     input_stock_number.addEventListener('keydown', function (event) {
+        let currentVal = parseInt(input_stock_number.value) || 0;
         if (event.key === 'ArrowUp') {
-            event.preventDefault(); // デフォルトの動作を防止
-            input_stock_number.value = parseFloat(input_stock_number.value) + 100;  // 100増加
+            event.preventDefault();
+            input_stock_number.value = currentVal + 100;
         } else if (event.key === 'ArrowDown') {
             event.preventDefault(); // デフォルトの動作を防止
-            input_stock_number.value = parseFloat(input_stock_number.value) - 100;  // 100減少
+            input_stock_number.value = Math.max(0, currentVal - 100);
         }
     });
     input_stock_average_price.addEventListener('keydown', function (event) {
+        let currentVal = parseFloat(input_stock_average_price.value) || 0.0;
         if (event.key === 'ArrowUp') {
-            event.preventDefault(); // デフォルトの動作を防止
-            input_stock_average_price.value = parseFloat(input_stock_average_price.value) + 1000;  // 1000増加
+            event.preventDefault();
+            input_stock_average_price.value = currentVal + 1000;  // 1000増加
         } else if (event.key === 'ArrowDown') {
             event.preventDefault(); // デフォルトの動作を防止
-            input_stock_average_price.value = parseFloat(input_stock_average_price.value) - 1000;  // 1000減少
+            input_stock_average_price.value = Math.max(0, currentVal - 1000);  // 1000減少
+        }
+    });
+    input_target_sell_price.addEventListener('keydown', function (event) {
+        let currentVal = parseFloat(input_target_sell_price.value) || 0.0;
+        if (event.key === 'ArrowUp') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_target_sell_price.value = currentVal + 1000;  // 1000増加
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_target_sell_price.value = Math.max(0, currentVal - 1000);  // 1000減少
+        }
+    });
+    input_target_buy_price.addEventListener('keydown', function (event) {
+        let currentVal = parseFloat(input_target_buy_price.value) || 0.0;
+        if (event.key === 'ArrowUp') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_target_buy_price.value = currentVal + 1000;  // 1000増加
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault(); // デフォルトの動作を防止
+            input_target_buy_price.value = Math.max(0, currentVal - 1000);  // 1000減少
         }
     });
 </script>

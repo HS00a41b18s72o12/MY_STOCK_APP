@@ -23,6 +23,10 @@ services:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Tokyo
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - MAIL_TO=${MAIL_TO}
+
     ports:
       - "5000:5000"
     volumes:
@@ -102,6 +106,9 @@ services:
       - TZ=Asia/Tokyo
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - MAIL_TO=${MAIL_TO}
     volumes:
       - ./analyze_finance_report:/app
       - ./common:/app/common
@@ -122,6 +129,9 @@ services:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Tokyo
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - MAIL_TO=${MAIL_TO}
     volumes:
       - ./update_finance_info:/app
       - ./common:/app/common

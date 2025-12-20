@@ -54,6 +54,8 @@ class FrontendClass:
                     "stock_name": stock.stock_name,
                     "number": stock.number,
                     "average_price": stock.average_price,
+                    "target_buy_price": stock.target_buy_price,
+                    "target_sell_price": stock.target_sell_price,
                     "remarks": remarks,
                     "group": group,
 
@@ -150,7 +152,7 @@ class FrontendClass:
         finally:
             db.close()
 
-    def register_stock(self, stock_code, stock_name, number, average_price, remarks, group):
+    def register_stock(self, stock_code, stock_name, number, average_price, target_sell_price, target_buy_price, remarks, group):
         """銘柄を登録または更新する"""
         db: Session = SessionLocal()
         try:
@@ -160,6 +162,8 @@ class FrontendClass:
             stock_name = stock_name if stock_name else None
             number = int(number) if number else None
             average_price = float(average_price) if average_price else None
+            target_sell_price = float(target_sell_price) if target_sell_price else None
+            target_buy_price = float(target_buy_price) if target_buy_price else None
             remarks = remarks if remarks else None
             group = group if group else None
 
@@ -173,6 +177,10 @@ class FrontendClass:
                     existing_stock.number = number
                 if average_price is not None and average_price != 0.0:
                     existing_stock.average_price = average_price
+                if target_sell_price is not None:
+                    existing_stock.target_sell_price = target_sell_price
+                if target_buy_price is not None:
+                    existing_stock.target_buy_price = target_buy_price
                 if remarks is not None or remarks != '未選択':
                     existing_stock.remarks = remarks
                 if group is not None:
@@ -185,6 +193,8 @@ class FrontendClass:
                     stock_name=stock_name,
                     number=int(number),
                     average_price=float(average_price),
+                    target_sell_price=target_sell_price,
+                    target_buy_price=target_buy_price,
                     remarks=remarks,
                     group=group
                 )

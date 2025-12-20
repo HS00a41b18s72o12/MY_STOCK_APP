@@ -1,8 +1,9 @@
 import time
 import jpholiday
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy.orm import Session
+from common.notification import send_gmail
 from common.database import engine, SessionLocal
 from common.models import Stock, MarketData
 
@@ -105,21 +106,47 @@ class FinanceUpdater:
         data = self.get_stock_data_from_yfinance(code)
         if not data:
             return
-
         print(f"Updating {code}: {data['current_price']} JPY")
-
         # MarketDataを取得、なければ作成
         market_data = db.query(MarketData).filter(MarketData.stock_code == code).first()
         if not market_data:
             market_data = MarketData(stock_code=code)
             db.add(market_data)
-
         # データの反映
         market_data.current_price = data["current_price"]
         market_data.previous_price = data["previous_price"]
         market_data.dividend_amount = data["dividend_amount"]
         market_data.per = data["per"]
         market_data.pbr = data["pbr"]
+
+        # 目標価格到達の通知判定
+        # Stock情報を取得（目標価格を確認するため）
+        stock = db.query(Stock).filter(Stock.stock_code == code).first()
+        current_val = data["current_price"]
+        if stock:
+            # 今日の日付
+            today = date.today()
+            # 既に今日通知済みならスキップ (日付のみ比較)
+            if stock.last_notice_date and stock.last_notice_date.date() == today:
+                return
+            # 通知判定
+            should_notify = False
+            msg_subject = ""
+            msg_body = ""
+            # 売り目標判定
+            if stock.target_sell_price and current_val >= stock.target_sell_price:
+                should_notify = True
+                msg_subject = f"売り時通知: {stock.stock_name}"
+                msg_body = f"{stock.stock_name} ({code}) の株価が {current_val}円 になりました。\n目標売値: {stock.target_sell_price}円 以上です。"
+            # 買い目標判定
+            elif stock.target_buy_price and current_val <= stock.target_buy_price:
+                should_notify = True
+                msg_subject = f"買い時通知: {stock.stock_name}"
+                msg_body = f"{stock.stock_name} ({code}) の株価が {current_val}円 になりました。\n目標買値: {stock.target_buy_price}円 以下です。"
+            # 通知実行
+            if should_notify:
+                send_gmail(msg_subject, msg_body)
+                stock.last_notice_date = datetime.now()
 
     def check_holiday(self):
         today = datetime.today()
