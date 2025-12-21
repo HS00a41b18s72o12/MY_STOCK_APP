@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from common.database import SessionLocal
-from common.models import Stock, Disclosure, MarketData
+from common.models import Stock, Disclosure, MarketData, DailyAssetSnapshot, DailyGroupSnapshot
 from common.database import engine, SessionLocal, Base
 
 import os
@@ -35,7 +35,9 @@ class DbBackuper:
             targets = [
                 (Stock, "stocks"),
                 (MarketData, "market_data"),
-                (Disclosure, "disclosures")
+                (Disclosure, "disclosures"),
+                (DailyAssetSnapshot, "daily_asset_snapshots"),
+                (DailyGroupSnapshot, "daily_group_snapshots")
             ]
             print(f"Starting database backup to {backup_dir} ...")
             for model_class, prefix in targets:
@@ -86,6 +88,8 @@ class DbBackuper:
             stocks_files = glob.glob(os.path.join(csv_folder, 'stocks*.csv'))
             market_files = glob.glob(os.path.join(csv_folder, 'market_data*.csv'))
             disclosures_files = glob.glob(os.path.join(csv_folder, 'disclosures*.csv'))
+            daily_asset_snapshots_files = glob.glob(os.path.join(csv_folder, 'daily_asset_snapshots*.csv'))
+            daily_group_snapshots_files = glob.glob(os.path.join(csv_folder, 'daily_group_snapshots*.csv'))
 
             # stocks
             if db.query(Stock).count() > 0:
@@ -150,13 +154,24 @@ class DbBackuper:
                         per = float(per_str) if per_str else 0.0
                         pbr_str = row.get('pbr', '0.0')
                         pbr = float(pbr_str) if pbr_str else 0.0
+                        past_eps_str = row.get('past_eps', '0.0')
+                        past_eps = float(past_eps_str) if past_eps_str else 0.0
+                        predict_eps_str = row.get('predict_eps', '0.0')
+                        predict_eps = float(predict_eps_str) if predict_eps_str else 0.0
+                        
+                        # 文字列
+                        sector = row.get('sector')
+                        sector = sector if sector else None
                         market_data = MarketData(
                             stock_code=row['stock_code'],
                             current_price=current_price,
                             previous_price=previous_price,
                             dividend_amount=dividend_amount,
                             per=per,
-                            pbr=pbr
+                            pbr=pbr,
+                            sector=sector,
+                            past_eps=past_eps,
+                            predict_eps=predict_eps
                         )
                         new_market_data.append(market_data)
                 if new_market_data:
@@ -223,8 +238,95 @@ class DbBackuper:
                     print(f"Successfully imported {len(new_disclosures)} disclosures from CSV.")
                 else:
                     print("CSV file was empty.")
+
+
+            # daily_asset_snapshots
+            if db.query(DailyAssetSnapshot).count() > 0:
+                print(f"daily_asset_snapshots data exists")
+            elif not daily_asset_snapshots_files:
+                print(f"daily_asset_snapshots CSV file not found")
+            else:
+                daily_asset_snapshot_csv_path = daily_asset_snapshots_files[0]
+                print("daily_asset_snapshots table is empty. Starting import from CSV...")
+                new_daily_asset_snapshot = []
+                # CSV読み込み (エンコーディングはutf-8推奨)
+                with open(daily_asset_snapshot_csv_path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        # 日付変換
+                        date_str = row.get('date')
+                        if date_str:
+                            try:
+                                date = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                            except ValueError:
+                                # フォーマットが合わない場合は現在時刻などで代替
+                                print(f"Date parse error: {date_str}")
+                                date = datetime.datetime.now()
+                        # 数値変換 (空文字の場合は0にする安全策)
+                        total_market_value_str = row.get('total_market_value', '0')
+                        total_market_value = int(total_market_value_str) if total_market_value_str else 0
+                        total_profit_str = row.get('total_profit', '0')
+                        total_profit = int(total_profit_str) if total_profit_str else 0
+                        total_investment_str = row.get('total_investment', '0')
+                        total_investment = int(total_investment_str) if total_investment_str else 0
+                        daily_asset_snapshots = DailyAssetSnapshot(
+                            date=date,
+                            total_market_value=total_market_value,
+                            total_profit=total_profit,
+                            total_investment=total_investment
+                        )
+                        new_daily_asset_snapshot.append(daily_asset_snapshots)
+                if new_daily_asset_snapshot:
+                    db.add_all(new_daily_asset_snapshot)
+                    db.commit()
+                    print(f"Successfully imported {len(new_daily_asset_snapshot)} daily_asset_snapshots from CSV.")
+                else:
+                    print("CSV file was empty.")
+
+
+            # daily_group_snapshots
+            if db.query(DailyGroupSnapshot).count() > 0:
+                print(f"daily_group_snapshots data exists")
+            elif not daily_group_snapshots_files:
+                print(f"daily_group_snapshots CSV file not found")
+            else:
+                daily_group_snapshots_csv_path = daily_group_snapshots_files[0]
+                print("daily_group_snapshots table is empty. Starting import from CSV...")
+                new_daily_group_snapshots = []
+                # CSV読み込み (エンコーディングはutf-8推奨)
+                with open(daily_group_snapshots_csv_path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        # 数値変換
+                        snapshot_id_str = row.get('snapshot_id', '0')
+                        snapshot_id = int(snapshot_id_str) if snapshot_id_str else 0
+                        market_value_str = row.get('market_value', '0')
+                        market_value = int(market_value_str) if market_value_str else 0
+                        profit_str = row.get('profit', '0')
+                        profit = int(profit_str) if profit_str else 0
+                        investment_str = row.get('investment', '0')
+                        investment = int(investment_str) if investment_str else 0
+                        # 空文字のクリーニング (CSVの ,, は空文字 "" になるため None に変換)
+                        group_name = row.get('group_name')
+                        group_name = group_name if group_name else None
+                        daily_group_snapshots = DailyGroupSnapshot(
+                            snapshot_id=snapshot_id,
+                            group_name=group_name,
+                            market_value=market_value,
+                            profit=profit,
+                            investment=investment
+                        )
+                        new_daily_group_snapshots.append(daily_group_snapshots)
+                if new_daily_group_snapshots:
+                    db.add_all(new_daily_group_snapshots)
+                    db.commit()
+                    print(f"Successfully imported {len(new_daily_group_snapshots)} stocks from CSV.")
+                else:
+                    print("CSV file was empty.")
+
         except Exception as e:
             print(f"Error importing CSV: {e}")
             db.rollback()
         finally:
             db.close()
+
