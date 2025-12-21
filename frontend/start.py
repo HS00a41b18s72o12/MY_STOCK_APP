@@ -1,8 +1,8 @@
 from flask import Flask, send_from_directory, render_template, request, redirect, url_for, make_response, jsonify
 import os
-from main import FrontendClass
 import requests
 from bs4 import BeautifulSoup
+from main import FrontendClass
 
 app = Flask(__name__)
 frontend_app = FrontendClass() 
@@ -45,13 +45,18 @@ def index():
     order = request.args.get("order", "asc")
     group_filter = request.args.get("group_filter", None)
     stock_contents, summary = frontend_app.get_my_stocks(sort_by, order, group_filter)
+    
+    # グラフ用データの取得
+    graph_data = frontend_app.get_graph_data()
+
     response = make_response(render_template(
         "index.html", 
         stock_contents=stock_contents,
         summary=summary,
         current_sort=sort_by,
         current_order=order,
-        current_group=group_filter
+        current_group=group_filter,
+        graph_data=graph_data
     ))
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"

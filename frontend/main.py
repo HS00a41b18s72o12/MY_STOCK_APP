@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 import os
 
 from common.database import engine, SessionLocal, Base
-from common.models import Stock, Disclosure, MarketData
+from common.models import Stock, DailyAssetSnapshot
 
 class FrontendClass:
     def __init__(self):
@@ -225,5 +225,123 @@ class FrontendClass:
         except Exception as e:
             print(f"Error deleting stock: {e}")
             db.rollback()
+        finally:
+            db.close()
+
+    def get_graph_data(self):
+        """
+        グラフ描画に必要なデータを集計して辞書形式で返す
+        """
+        db: Session = SessionLocal()
+        try:
+            # ==========================================
+            # 1. 最新状態の集計 (セクター比率 & TreeMap用)
+            # ==========================================
+            stocks = db.query(Stock).all()
+            
+            sector_agg = {}   # { "電気機器": 100000, "銀行業": 50000 ... }
+            tree_map_data = [] 
+            
+            for stock in stocks:
+                market = stock.market_data
+                # 株価があり、かつ保有数が正のものを対象
+                if market and market.current_price and stock.number > 0:
+                    # 時価評価額
+                    current_val = int(stock.number * market.current_price)
+                    
+                    # セクター (なければ "その他" や "未分類" に)
+                    sec = market.sector if market.sector else "その他"
+                    
+                    # A. セクター集計
+                    sector_agg[sec] = sector_agg.get(sec, 0) + current_val
+                    
+                    # B. TreeMap用データ (階層構造なしのフラットなリストでOK)
+                    tree_map_data.append({
+                        "name": stock.stock_name,
+                        "code": stock.stock_code,
+                        "sector": sec,
+                        "value": current_val,
+                        "group": stock.group if stock.group else "未分類"
+                    })
+
+            # Chart.js用にリスト化 (セクター比率)
+            # 値の大きい順にソートすると見栄えが良い
+            sorted_sectors = sorted(sector_agg.items(), key=lambda x: x[1], reverse=True)
+            sector_labels = [item[0] for item in sorted_sectors]
+            sector_values = [item[1] for item in sorted_sectors]
+
+
+            # ==========================================
+            # 2. 時系列データの集計 (推移グラフ用)
+            # ==========================================
+            # 日付順にSnapshotを取得 (子テーブルも一緒にロード)
+            snapshots = db.query(DailyAssetSnapshot)\
+                          .order_by(DailyAssetSnapshot.date.asc())\
+                          .all()
+            
+            # --- 全体推移用配列 ---
+            history_dates = []    # X軸: 日付
+            total_assets = []     # Y軸: 時価総額
+            total_investment = [] # Y軸: 投資元本
+            total_profit = []     # Y軸: 損益
+
+            # --- グループ別推移用辞書 ---
+            # { "長期保有": [100, 110, ...], "優待株": [50, 55, ...] }
+            group_history_map = {} 
+            
+            # 登場する全グループ名を把握するためのセット
+            all_groups = set()
+
+            for snap in snapshots:
+                # 日付 (YYYY-MM-DD 文字列)
+                d_str = snap.date.strftime('%Y-%m-%d')
+                history_dates.append(d_str)
+                
+                # 全体データ
+                total_assets.append(snap.total_market_value or 0)
+                total_investment.append(snap.total_investment or 0)
+                total_profit.append(snap.total_profit or 0)
+
+                # グループ別データの一時保存用
+                # この日のスナップショットに含まれるグループごとの値を抽出
+                daily_grp_vals = {}
+                for grp_snap in snap.group_snapshots:
+                    g_name = grp_snap.group_name
+                    val = grp_snap.market_value or 0
+                    daily_grp_vals[g_name] = val
+                    all_groups.add(g_name)
+                
+                # マップに追記 (まだキーがない場合は初期化)
+                # ここでは一時的に「日付ごとの辞書」ではなく「グループごとのリスト」を作りたいが
+                # ループ中は追記が難しいので、後で欠損値を埋める処理をする
+                for g in all_groups:
+                    if g not in group_history_map:
+                        # 過去の日付分を0で埋めて初期化 (途中から出現したグループ対策)
+                        group_history_map[g] = [0] * (len(history_dates) - 1)
+                    
+                    # 今日の値を追加 (なければ0)
+                    group_history_map[g].append(daily_grp_vals.get(g, 0))
+
+            # 最終的なデータ構造の整形
+            return {
+                # 円グラフ用
+                "sector_labels": sector_labels,
+                "sector_values": sector_values,
+                
+                # TreeMap用
+                "tree_map_data": tree_map_data,
+                
+                # 折れ線グラフ用 (全体)
+                "history_dates": history_dates,
+                "history_total_assets": total_assets,
+                "history_total_investment": total_investment,
+                "history_total_profit": total_profit,
+                
+                # 折れ線グラフ用 (グループ別)
+                "group_history": group_history_map
+            }
+        except Exception as e:
+            print(f"Error getting graph data: {e}")
+            return {} # エラー時は空を返す
         finally:
             db.close()

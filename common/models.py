@@ -34,9 +34,11 @@ class MarketData(Base):
     dividend_amount = Column(Float, nullable=True)                                               # 1株あたり配当金(円)
     per = Column(Float, nullable=True)                                                           # PER
     pbr = Column(Float, nullable=True)                                                           # PBR
+    sector = Column(String(50), nullable=True)                                                   # 業界
+    past_eps = Column(Float, nullable=True)                                                      # 過去EPS
+    predict_eps = Column(Float, nullable=True)                                                   # 予想EPS
     created_at = Column(DateTime(timezone=True), server_default=func.now())                      # 作成日時
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # 更新日時
-
     # リレーション
     stock = relationship("Stock", back_populates="market_data")
 
@@ -57,11 +59,36 @@ class Disclosure(Base):
     status = Column(String(20), default="PENDING")                                               # AI処理状態
     created_at = Column(DateTime(timezone=True), server_default=func.now())                      # 作成日時
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # 更新日時
-
     # 重複防止
     __table_args__ = (
         UniqueConstraint('stock_code', 'announce_date', 'title', name='uix_disclosure_unique'),
     )
-
     # リレーション
     stock = relationship("Stock", back_populates="disclosures")
+
+
+# 資産推移記録用
+# 1. 全体の合計を記録するテーブル
+class DailyAssetSnapshot(Base):
+    __tablename__ = "daily_asset_snapshots"
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, nullable=False, unique=True)
+    total_market_value = Column(Integer)
+    total_profit = Column(Integer)
+    total_investment = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # リレーション (1:N) - 1つの日付に対して複数のグループ記録が紐づく
+    group_snapshots = relationship("DailyGroupSnapshot", back_populates="asset_snapshot", cascade="all, delete-orphan")
+
+# 2. グループごとの合計を記録するテーブル (★新規追加)
+class DailyGroupSnapshot(Base):
+    __tablename__ = "daily_group_snapshots"
+    id = Column(Integer, primary_key=True, index=True)
+    # 親テーブル(DailyAssetSnapshot)のIDと紐づける
+    snapshot_id = Column(Integer, ForeignKey("daily_asset_snapshots.id"), nullable=False)
+    group_name = Column(String(50), nullable=False) # "長期保有", "優待株" など
+    market_value = Column(Integer)
+    profit = Column(Integer)
+    investment = Column(Integer)
+    # リレーション
+    asset_snapshot = relationship("DailyAssetSnapshot", back_populates="group_snapshots")

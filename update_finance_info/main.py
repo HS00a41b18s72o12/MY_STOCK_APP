@@ -5,7 +5,7 @@ from datetime import datetime, date
 from sqlalchemy.orm import Session
 from common.notification import send_gmail
 from common.database import engine, SessionLocal
-from common.models import Stock, MarketData
+from common.models import Stock, MarketData, DailyAssetSnapshot, DailyGroupSnapshot
 
 class FinanceUpdater:
     def __init__(self):
@@ -26,6 +26,9 @@ class FinanceUpdater:
                 dividend_amount = info.get('dividendRate')
                 per = None if info.get('trailingPE') is None else round(info.get('trailingPE'), 2)
                 pbr = None if info.get('priceToBook') is None else round(info.get('priceToBook'), 2)
+                sector = info.get('sector')
+                past_eps = info.get('trailingEps')
+                predict_eps = info.get('forwardEps')
                 # データがない場合は次の取引所コードを試す    
                 if current_price is None and previous_price is None:
                     print(f"No price data for {ticker_symbol}, trying next exchange.")
@@ -37,6 +40,9 @@ class FinanceUpdater:
                     "dividend_amount": dividend_amount,
                     "per": per,
                     "pbr": pbr,
+                    "sector": sector,
+                    "past_eps": past_eps,
+                    "predict_eps": predict_eps,
                 }
             except Exception as e:
                 print(f"Error fetching {ticker_symbol}: {e}")
@@ -48,6 +54,9 @@ class FinanceUpdater:
             "dividend_amount": 0,
             "per": 0,
             "pbr": 0,
+            "sector": None,
+            "past_eps": None,
+            "predict_eps": None,
         }
 
     def check_new_stocks(self):
@@ -78,7 +87,7 @@ class FinanceUpdater:
         finally:
             db.close()
 
-    def update_all_stocks_daily(self):
+    def update_all_stocks(self):
         """
         【日次バッチ】全銘柄の情報を更新する
         """
@@ -93,6 +102,8 @@ class FinanceUpdater:
             for stock in stocks:
                 self._update_single_stock(db, stock.stock_code)
                 time.sleep(1) # API制限考慮で少し待つ
+            # 資産履歴の記録
+            self._record_daily_snapshot(db)
             db.commit()
             print("Daily update completed.")
         except Exception as e:
@@ -118,6 +129,9 @@ class FinanceUpdater:
         market_data.dividend_amount = data["dividend_amount"]
         market_data.per = data["per"]
         market_data.pbr = data["pbr"]
+        market_data.sector = data["sector"]
+        market_data.past_eps = data["past_eps"]
+        market_data.predict_eps = data["predict_eps"]
 
         # 目標価格到達の通知判定
         # Stock情報を取得（目標価格を確認するため）
@@ -147,6 +161,67 @@ class FinanceUpdater:
             if should_notify:
                 send_gmail(msg_subject, msg_body)
                 stock.last_notice_date = datetime.now()
+
+
+    def _record_daily_snapshot(self, db: Session):
+        today = date.today()
+        # 既存データの確認・削除（再実行時のため）
+        # ※Cascade設定のおかげで親を消せば子(GroupSnapshot)も消える
+        existing = db.query(DailyAssetSnapshot).filter(DailyAssetSnapshot.date == today).first()
+        if existing:
+            db.delete(existing)
+            db.commit() # 一旦削除を確定
+
+        # 新規作成
+        snapshot = DailyAssetSnapshot(date=today)
+        
+        # 集計用変数
+        total_market = 0
+        total_profit = 0
+        group_agg = {} # {"長期保有": {"mv": 0, "pf": 0, "inv": 0}, ...}
+
+        stocks = db.query(Stock).all()
+        for stock in stocks:
+            market = stock.market_data
+            if market and market.current_price:
+                # 数値計算
+                current_val = int(stock.number * market.current_price)
+                buy_val = int(stock.number * stock.average_price)
+                profit = current_val - buy_val
+                
+                # 全体合計
+                total_market += current_val
+                total_profit += profit
+
+                # グループ集計
+                grp = stock.group if stock.group else "未分類"
+                if grp not in group_agg:
+                    group_agg[grp] = {"mv": 0, "pf": 0, "inv": 0}
+                
+                group_agg[grp]["mv"] += current_val
+                group_agg[grp]["pf"] += profit
+                group_agg[grp]["inv"] += (current_val - profit)
+
+        # 親レコード設定
+        snapshot.total_market_value = total_market
+        snapshot.total_profit = total_profit
+        snapshot.total_investment = total_market - total_profit
+        
+        db.add(snapshot)
+        db.flush() # IDを発行させるためにflush
+
+        # 子レコード(グループ別)作成
+        for grp_name, data in group_agg.items():
+            grp_snapshot = DailyGroupSnapshot(
+                snapshot_id=snapshot.id,
+                group_name=grp_name,
+                market_value=data["mv"],
+                profit=data["pf"],
+                investment=data["inv"]
+            )
+            db.add(grp_snapshot)
+        
+        print(f"Recorded snapshot for {today}")
 
     def check_holiday(self):
         today = datetime.today()

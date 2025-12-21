@@ -81,7 +81,7 @@
                 </select>
             </div>
             <div class="w-24">
-                <button type=" submit"
+                <button type="submit"
                     class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-150">
                     保存
                 </button>
@@ -128,6 +128,59 @@
         </div>
     </div>
 </div>
+
+<!-- グラフ・分析エリア (デフォルトで開く: open) -->
+<details class="bg-white rounded-lg shadow-md mb-8 group border border-gray-200" open>
+    <summary
+        class="list-none p-6 cursor-pointer flex items-center justify-between outline-none select-none bg-white rounded-lg group-open:rounded-b-none">
+        <h2 class="text-xl font-bold text-gray-700">ポートフォリオ分析</h2>
+        <div class="text-gray-400 transition-transform duration-300 group-open:rotate-180">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </div>
+    </summary>
+
+    <div class="p-6 border-t border-gray-100 bg-gray-50">
+        <!-- 上段: 推移グラフ -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- ①資産推移 (全体) -->
+            <div class="bg-white p-4 rounded shadow-sm h-80">
+                <h3 class="text-center font-bold mb-2 text-gray-600 text-sm">資産推移 (全体)</h3>
+                <div class="relative h-full w-full pb-6">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+            <!-- ②資産推移 (グループ別積み上げ) -->
+            <div class="bg-white p-4 rounded shadow-sm h-80">
+                <h3 class="text-center font-bold mb-2 text-gray-600 text-sm">資産推移 (分類別)</h3>
+                <div class="relative h-full w-full pb-6">
+                    <canvas id="groupHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下段: 構成比率 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- ③セクター比率 -->
+            <div class="bg-white p-4 rounded shadow-sm h-96">
+                <h3 class="text-center font-bold mb-2 text-gray-600 text-sm">セクター比率</h3>
+                <div class="relative h-full w-full pb-6">
+                    <canvas id="sectorChart"></canvas>
+                </div>
+            </div>
+
+            <!-- ④ヒートマップ (TreeMap) -->
+            <div class="bg-white p-4 rounded shadow-sm h-96 lg:col-span-2">
+                <h3 class="text-center font-bold mb-2 text-gray-600 text-sm">保有銘柄ヒートマップ (時価総額)</h3>
+                <div class="relative h-full w-full pb-6">
+                    <canvas id="treeMapChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
 
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
     <h1 class="text-xl font-bold">保有銘柄一覧</h1>
@@ -471,4 +524,215 @@
         }
     });
 </script>
+
+<!-- ★追加: データをJSONとして埋め込むタグ -->
+<script id="graph-data-json" type="application/json">
+    {{ graph_data | tojson | safe }}
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // start.py から渡されたデータをパース
+        const dataElement = document.getElementById('graph-data-json');
+        let gData = null;
+
+        try {
+            // タグの中身（テキスト）を取り出して、JSONとして復元する
+            gData = JSON.parse(dataElement.textContent);
+        } catch (e) {
+            console.error("JSON Parse Error:", e);
+            return;
+        }
+
+        // データがない場合は処理を中断
+        if (!gData || !gData.history_dates || gData.history_dates.length === 0) {
+            console.log("No graph data available.");
+            return;
+        }
+
+        // 共通カラーパレット (セクターやグループの色分け用)
+        const colors = [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#64748B',
+            '#A855F7', '#D946EF', '#06B6D4', '#84CC16', '#EAB308'
+        ];
+
+        // --- 1. 資産推移 (全体) 折れ線グラフ ---
+        new Chart(document.getElementById('historyChart'), {
+            type: 'line',
+            data: {
+                labels: gData.history_dates,
+                datasets: [
+                    {
+                        label: '時価総額',
+                        data: gData.history_total_assets,
+                        borderColor: '#3B82F6', // Blue
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    },
+                    {
+                        label: '投資元本',
+                        data: gData.history_total_investment,
+                        borderColor: '#9CA3AF', // Gray
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString() + " 円"
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: false } // 金額の変化を見やすくするため0始まりにしない
+                }
+            }
+        });
+
+        // --- 2. 資産推移 (グループ別) 積み上げ面グラフ ---
+        // group_history 辞書を datasets 配列に変換
+        const groupDatasets = [];
+        let colorIdx = 0;
+        for (const [groupName, dataArray] of Object.entries(gData.group_history)) {
+            groupDatasets.push({
+                label: groupName,
+                data: dataArray,
+                backgroundColor: colors[colorIdx % colors.length] + '80', // 透明度50%
+                borderColor: colors[colorIdx % colors.length],
+                fill: true
+            });
+            colorIdx++;
+        }
+
+        new Chart(document.getElementById('groupHistoryChart'), {
+            type: 'line',
+            data: {
+                labels: gData.history_dates,
+                datasets: groupDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString() + " 円"
+                        }
+                    }
+                },
+                scales: {
+                    y: { stacked: true } // 積み上げ設定
+                }
+            }
+        });
+
+        // --- 3. セクター比率 (ドーナツ) ---
+        new Chart(document.getElementById('sectorChart'), {
+            type: 'doughnut',
+            data: {
+                labels: gData.sector_labels,
+                datasets: [{
+                    data: gData.sector_values,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const val = ctx.raw;
+                                const total = ctx.chart._metasets[ctx.datasetIndex].total;
+                                const pct = ((val / total) * 100).toFixed(1);
+                                return ctx.label + ": " + val.toLocaleString() + " 円 (" + pct + "%)";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // --- 4. ヒートマップ (TreeMap) ---
+        // セクターごとに色を割り当てるためのロジック
+        const sectorColorMap = {};
+        gData.sector_labels.forEach((sec, i) => {
+            sectorColorMap[sec] = colors[i % colors.length];
+        });
+
+        new Chart(document.getElementById('treeMapChart'), {
+            type: 'treemap',
+            data: {
+                datasets: [{
+                    label: 'Portfolio',
+                    tree: gData.tree_map_data,
+                    key: 'value',      // 面積を決める値 (時価評価額)
+                    groups: ['sector', 'name'], // 階層: セクター > 銘柄名
+                    backgroundColor: (ctx) => {
+                        if (ctx.type !== 'data') return 'transparent';
+                        // データノードの場合、セクターに応じた色を返す
+                        const item = ctx.raw._data; // 生データへのアクセス
+                        // 階層の深さによって色を変えるなどの調整も可能
+                        // ここでは親(セクター)の色を取得しようとするが、itemの構造依存
+                        // 簡易的にランダムに見えないよう、データに含まれるsector名から色を引く
+                        if (item.sector && sectorColorMap[item.sector]) {
+                            return sectorColorMap[item.sector];
+                        }
+                        return '#3B82F6';
+                    },
+                    borderWidth: 1,
+                    borderColor: '#fff',
+                    spacing: 1,
+                    labels: {
+                        display: true,
+                        formatter: (ctx) => {
+                            // 銘柄名と金額を表示
+                            if (ctx.raw.v < 50000) return ""; // 小さすぎる場合は非表示
+                            return [
+                                ctx.raw.g, // グループ名（銘柄名またはセクター名）
+                                (ctx.raw.v / 10000).toFixed(0) + "万"
+                            ];
+                        },
+                        color: 'white',
+                        font: { size: 12, weight: 'bold' }
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: (items) => items[0].raw._data.name, // 銘柄名
+                            label: (ctx) => {
+                                const item = ctx.raw._data;
+                                return [
+                                    "セクター: " + item.sector,
+                                    "分類: " + item.group,
+                                    "評価額: " + item.value.toLocaleString() + " 円"
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+
 {% endblock %}
