@@ -5,6 +5,7 @@ import datetime
 from functions import browser
 from functions import common
 from common.models import Stock, Disclosure
+from common.database import engine, SessionLocal, Base
 
 class DisclosureClass:
     def __init__(self):
