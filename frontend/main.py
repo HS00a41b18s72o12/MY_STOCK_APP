@@ -81,13 +81,19 @@ class FrontendClass:
                 ret_list.append(stock_data)
             
             # === フィルタリング処理 ===
-            if group_filter:
-                if group_filter == "未分類":
-                    # DBでNoneだったものは "-" になっているので、"-" を探す
-                    ret_list = [x for x in ret_list if x["group"] == "-"]
-                else:
-                    # 指定されたグループと一致するものだけ残す
-                    ret_list = [x for x in ret_list if x["group"] == group_filter]
+            if group_filter == 'watchlist':
+                # 監視リスト: 保有数が0のものだけ抽出
+                ret_list = [x for x in ret_list if x["number"] == 0]
+            elif group_filter == 'holdings' or group_filter is None:
+                # 保有株全件: 保有数が1以上のものだけ抽出
+                # ※これにより、デフォルト画面から0株の銘柄が消え、スッキリします
+                ret_list = [x for x in ret_list if x["number"] > 0]
+            elif group_filter == "未分類":
+                # 未分類かつ、保有株であるもの
+                ret_list = [x for x in ret_list if x["group"] == "-" and x["number"] > 0]
+            else:
+                # 指定されたグループ
+                ret_list = [x for x in ret_list if x["group"] == group_filter]
             
             # === サマリー計算 (フィルタリング後のデータで計算) ===
             total_market_value = 0      # 時価総額合計

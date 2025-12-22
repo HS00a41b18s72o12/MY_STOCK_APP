@@ -36,6 +36,13 @@
     <!-- ここから下が折りたたまれる内容 -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
         <form method="POST" action="/" class="flex flex-wrap items-end gap-4">
+            <!-- 現在の表示状態を維持するための隠しフィールド -->
+            <!-- これにより、保存ボタンを押した時にこれらの値も一緒にBackendに送られます -->
+            <input type="hidden" name="keep_sort" value="{{ current_sort }}">
+            <input type="hidden" name="keep_order" value="{{ current_order }}">
+            <!-- group は None の場合に空文字になるように調整 -->
+            <input type="hidden" name="keep_group" value="{{ current_group if current_group else '' }}">
+
             <div class="w-24">
                 <label class="block text-sm font-medium text-gray-700">銘柄コード</label>
                 <input type="text" name="stock_code" id="input_stock_code" required
@@ -129,8 +136,8 @@
     </div>
 </div>
 
-<!-- グラフ・分析エリア (デフォルトで開く: open) -->
-<details class="bg-white rounded-lg shadow-md mb-8 group border border-gray-200" open>
+<!-- グラフ・分析エリア -->
+<details class="bg-white rounded-lg shadow-md mb-8 group border border-gray-200" close>
     <summary
         class="list-none p-6 cursor-pointer flex items-center justify-between outline-none select-none bg-white rounded-lg group-open:rounded-b-none">
         <h2 class="text-xl font-bold text-gray-700">ポートフォリオ分析</h2>
@@ -187,12 +194,18 @@
 
     <!-- フィルタリングボタン群 -->
     <div class="inline-flex rounded-md shadow-sm" role="group">
-        <!-- 「すべて」ボタン -->
-        <a href="{{ url_for('index', sort=current_sort, order=current_order) }}" class="px-4 py-2 text-sm font-medium border border-gray-200 rounded-l-lg 
-                  {{ 'bg-blue-600 text-white' if not current_group else 'bg-white text-gray-700 hover:bg-gray-100' }}">
-            すべて
+        <!-- 1. 保有株すべて (ボタン名を変更) -->
+        <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter='holdings') }}"
+            class="px-4 py-2 text-sm font-medium border border-gray-200 rounded-l-lg 
+                  {{ 'bg-blue-600 text-white' if current_group == 'holdings' or current_group == None else 'bg-white text-gray-700 hover:bg-gray-100' }}">
+            保有株全件
         </a>
-
+        <!-- 監視リスト -->
+        <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter='watchlist') }}"
+            class="px-4 py-2 text-sm font-medium border-t border-b border-r border-gray-200 
+                  {{ 'bg-blue-600 text-white' if current_group == 'watchlist' else 'bg-white text-gray-700 hover:bg-gray-100' }}">
+            監視リスト
+        </a>
         <!-- 各グループボタン -->
         {% for g in ['長期保有', '短期保有', '優待株'] %}
         <a href="{{ url_for('index', sort=current_sort, order=current_order, group_filter=g) }}"
@@ -716,14 +729,31 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
+                    // 個別銘柄（codeを持っているもの）だけを表示対象にする
+                    // これにより、セクターのヘッダー部分ではツールチップが出なくなります
                     tooltip: {
+                        filter: (tooltipItem) => {
+                            const data = tooltipItem.raw._data;
+                            // childrenが存在し、その最初の要素にcodeがあるかチェック
+                            return data.children && data.children.length > 0 && data.children[0].code && data.name;
+                        },
                         callbacks: {
-                            title: (items) => items[0].raw._data.name, // 銘柄名
+                            // タイトル: エラー防止のガードを入れる
+                            title: (items) => {
+                                if (!items || items.length === 0) {
+                                    return '';
+                                }
+                                return items[0].raw._data.name;
+                            },
+                            // ラベル: children[0] からデータを取り出す
                             label: (ctx) => {
                                 const item = ctx.raw._data;
+                                // 安全にデータを取り出す
+                                const stockData = (item.children && item.children.length > 0) ? item.children[0] : {};
                                 return [
+                                    "名前: " + item.name,
                                     "セクター: " + item.sector,
-                                    "分類: " + item.group,
+                                    "分類: " + (stockData.group || "-"),
                                     "評価額: " + item.value.toLocaleString() + " 円"
                                 ];
                             }

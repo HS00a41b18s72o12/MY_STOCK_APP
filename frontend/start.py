@@ -33,17 +33,22 @@ def index():
         target_buy_price = request.form.get("target_buy_price")
         remarks = request.form.get("remarks")
         group = request.form.get("group")
+        # 状態維持用のパラメータを取得
+        keep_sort = request.form.get("keep_sort", "stock_code")
+        keep_order = request.form.get("keep_order", "asc")
+        keep_group = request.form.get("keep_group")
         # DBへの登録処理を実行 (main.pyに追加するメソッド)
         print("start frontend_app.register_stock")
         frontend_app.register_stock(stock_code, stock_name, number, average_price, target_sell_price, target_buy_price, remarks, group)
-        
-        # 二重送信防止のためリダイレクトする
-        return redirect(url_for('index'))
+        # 空文字の場合は None に戻す（url_for でパラメータを除外するため）
+        if keep_group == "":
+            keep_group = None
+        return redirect(url_for('index', sort=keep_sort, order=keep_order, group_filter=keep_group))
     
     # デフォルトは stock_code の 昇順 (asc)
     sort_by = request.args.get("sort", "stock_code")
     order = request.args.get("order", "asc")
-    group_filter = request.args.get("group_filter", None)
+    group_filter = request.args.get("group_filter", "holdings")
     stock_contents, summary = frontend_app.get_my_stocks(sort_by, order, group_filter)
     
     # グラフ用データの取得
