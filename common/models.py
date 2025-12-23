@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from common.database import Base
@@ -35,8 +35,10 @@ class MarketData(Base):
     per = Column(Float, nullable=True)                                                           # PER
     pbr = Column(Float, nullable=True)                                                           # PBR
     sector = Column(String(50), nullable=True)                                                   # 業界
-    past_eps = Column(Float, nullable=True)                                                      # 過去EPS
-    predict_eps = Column(Float, nullable=True)                                                   # 予想EPS
+    eps = Column(Float, nullable=True)                                                           # 過去EPS
+    mix_coefficient = Column(Float, nullable=True)                                               # ミックス係数 (PER * PBR)
+    payout_ratio = Column(Float, nullable=True)                                                  # 配当性向 (%)
+    is_profitable = Column(Boolean, default=False)                                               # 黒字かどうか (EPS > 0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())                      # 作成日時
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # 更新日時
     # リレーション

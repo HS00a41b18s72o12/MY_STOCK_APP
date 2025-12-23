@@ -69,7 +69,11 @@ class FrontendClass:
                     "dividend_yield_percent": dividend_yield_percent,
                     "per": market.per if market else "-",
                     "pbr": market.pbr if market else "-",
-                    
+                    "eps": market.eps if market else "-",
+                    "mix_coefficient": market.mix_coefficient,
+                    "payout_ratio": market.payout_ratio if market else "-",
+                    "is_profitable": market.is_profitable if market else False,
+
                     # Disclosure
                     "announce_date": latest_disclosure.announce_date if latest_disclosure else "-",
                     "title": latest_disclosure.title if latest_disclosure else "-",

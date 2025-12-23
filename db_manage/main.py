@@ -154,11 +154,14 @@ class DbBackuper:
                         per = float(per_str) if per_str else 0.0
                         pbr_str = row.get('pbr', '0.0')
                         pbr = float(pbr_str) if pbr_str else 0.0
-                        past_eps_str = row.get('past_eps', '0.0')
-                        past_eps = float(past_eps_str) if past_eps_str else 0.0
-                        predict_eps_str = row.get('predict_eps', '0.0')
-                        predict_eps = float(predict_eps_str) if predict_eps_str else 0.0
-                        
+                        eps_str = row.get('eps', '0.0')
+                        eps = float(eps_str) if eps_str else 0.0
+                        mix_coefficient_str = row.get('mix_coefficient', '0.0')
+                        mix_coefficient = float(mix_coefficient_str) if mix_coefficient_str else 0.0
+                        payout_ratio_str = row.get('payout_ratio', '0.0')
+                        payout_ratio = float(payout_ratio_str) if payout_ratio_str else 0.0
+                        is_profitable_str = row.get('is_profitable', 'False')
+                        is_profitable = is_profitable_str == 'True' if is_profitable_str else False
                         # 文字列
                         sector = row.get('sector')
                         sector = sector if sector else None
@@ -170,8 +173,10 @@ class DbBackuper:
                             per=per,
                             pbr=pbr,
                             sector=sector,
-                            past_eps=past_eps,
-                            predict_eps=predict_eps
+                            eps=eps,
+                            mix_coefficient=mix_coefficient,
+                            payout_ratio=payout_ratio,
+                            is_profitable=is_profitable
                         )
                         new_market_data.append(market_data)
                 if new_market_data:

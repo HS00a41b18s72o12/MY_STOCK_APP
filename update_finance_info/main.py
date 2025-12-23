@@ -27,8 +27,20 @@ class FinanceUpdater:
                 per = None if info.get('trailingPE') is None else round(info.get('trailingPE'), 2)
                 pbr = None if info.get('priceToBook') is None else round(info.get('priceToBook'), 2)
                 sector = info.get('sector')
-                past_eps = info.get('trailingEps')
-                predict_eps = info.get('forwardEps')
+                eps = info.get('trailingEps')
+                # ミックス係数 (PER * PBR)
+                mix_coeff = None
+                if per is not None and pbr is not None:
+                    mix_coeff = per * pbr
+                # 配当性向 (1株配当 / EPS * 100)
+                # 利益のうちどれだけ配当に回しているか
+                payout_ratio = None
+                if dividend_amount is not None and eps is not None and eps > 0:
+                    payout_ratio = (dividend_amount / eps) * 100
+                # 黒字判定 (EPSがプラスなら黒字)
+                is_profitable = False
+                if eps is not None and eps > 0:
+                    is_profitable = True
                 # データがない場合は次の取引所コードを試す    
                 if current_price is None and previous_price is None:
                     print(f"No price data for {ticker_symbol}, trying next exchange.")
@@ -41,8 +53,10 @@ class FinanceUpdater:
                     "per": per,
                     "pbr": pbr,
                     "sector": sector,
-                    "past_eps": past_eps,
-                    "predict_eps": predict_eps,
+                    "eps": eps,
+                    "mix_coefficient": mix_coeff,
+                    "payout_ratio": payout_ratio,
+                    "is_profitable": is_profitable
                 }
             except Exception as e:
                 print(f"Error fetching {ticker_symbol}: {e}")
@@ -130,8 +144,10 @@ class FinanceUpdater:
         market_data.per = data["per"]
         market_data.pbr = data["pbr"]
         market_data.sector = data["sector"]
-        market_data.past_eps = data["past_eps"]
-        market_data.predict_eps = data["predict_eps"]
+        market_data.eps = data["eps"]
+        market_data.mix_coefficient = data["mix_coefficient"]
+        market_data.payout_ratio = data["payout_ratio"]
+        market_data.is_profitable = data["is_profitable"]
 
         # 目標価格到達の通知判定
         # Stock情報を取得（目標価格を確認するため）
