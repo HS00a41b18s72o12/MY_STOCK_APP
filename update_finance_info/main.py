@@ -68,9 +68,11 @@ class FinanceUpdater:
             "dividend_amount": 0,
             "per": 0,
             "pbr": 0,
-            "sector": None,
-            "past_eps": None,
-            "predict_eps": None,
+            "sector":None,
+            "eps": None,
+            "mix_coefficient": None,
+            "payout_ratio": None,
+            "is_profitable": False
         }
 
     def check_new_stocks(self):
